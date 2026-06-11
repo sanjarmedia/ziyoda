@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowRight, PawPrint } from 'lucide-react';
-import { animals } from '../data/mockData';
+import { Plus, ArrowRight, PawPrint, X } from 'lucide-react';
+import { useFarm } from '../context/FarmContext';
 
 export default function AnimalsPage() {
   const navigate = useNavigate();
+  const { animals, addAnimal } = useFarm();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Modal State
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [type, setType] = useState('qoramol');
+  const [breed, setBreed] = useState('');
+  const [age, setAge] = useState(2);
+  const [weight, setWeight] = useState(200);
+  const [gender, setGender] = useState('urg\'ochi');
+  const [status, setStatus] = useState('sog\'lom');
+  const [location, setLocation] = useState('');
+  const [notes, setNotes] = useState('');
+  const [dailyMilk, setDailyMilk] = useState(0);
+  const [error, setError] = useState('');
 
   // Filter animals based on search, type, and status
   const filteredAnimals = animals.filter((animal) => {
@@ -22,6 +37,44 @@ export default function AnimalsPage() {
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!name.trim() || !breed.trim() || !location.trim()) {
+      setError('Iltimos, barcha majburiy maydonlarni toʻldiring!');
+      return;
+    }
+
+    const newAnimalData = {
+      name: name.trim(),
+      type,
+      breed: breed.trim(),
+      age: parseInt(age) || 0,
+      weight: parseFloat(weight) || 0,
+      gender,
+      status,
+      location: location.trim(),
+      notes: notes.trim(),
+      dailyMilk: gender === 'urg\'ochi' && (type === 'qoramol' || type === 'echki') ? parseFloat(dailyMilk) || 0 : 0
+    };
+
+    addAnimal(newAnimalData);
+    
+    // Reset form
+    setName('');
+    setType('qoramol');
+    setBreed('');
+    setAge(2);
+    setWeight(200);
+    setGender('urg\'ochi');
+    setStatus('sog\'lom');
+    setLocation('');
+    setNotes('');
+    setDailyMilk(0);
+    setIsAddOpen(false);
+  };
+
   return (
     <div className="page-container animate-fade-in">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -31,7 +84,7 @@ export default function AnimalsPage() {
         </div>
         <button 
           className="btn btn-primary" 
-          onClick={() => alert('Yangi hayvon qoʻshish funksiyasi tez kunda ishga tushadi')}
+          onClick={() => setIsAddOpen(true)}
           style={{ gap: '8px' }}
         >
           <Plus size={16} />
@@ -133,6 +186,203 @@ export default function AnimalsPage() {
           </div>
         )}
       </section>
+
+      {isAddOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(10, 15, 13, 0.75)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setIsAddOpen(false)}
+        >
+          <div 
+            className="glass-card animate-fade-in"
+            style={{
+              width: '90%',
+              maxWidth: '560px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '32px',
+              position: 'relative',
+              boxShadow: 'var(--shadow-lg), var(--shadow-glow-strong)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setIsAddOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.target.style.color = 'var(--text-muted)'}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px' }}>Yangi chorva qoʻshish</h3>
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {error && <div className="login-error">{error}</div>}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                {/* Name */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Laqabi / Nomi *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Masalan: Bo'g'doy"
+                    required
+                  />
+                </div>
+
+                {/* Type */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Turi</label>
+                  <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
+                    <option value="qoramol">Qoramol</option>
+                    <option value="qo'y">Qoʻy</option>
+                    <option value="echki">Echki</option>
+                  </select>
+                </div>
+
+                {/* Breed */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Zoti *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={breed}
+                    onChange={(e) => setBreed(e.target.value)}
+                    placeholder="Masalan: Golshtayn"
+                    required
+                  />
+                </div>
+
+                {/* Gender */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Jinsi</label>
+                  <select className="input" value={gender} onChange={(e) => setGender(e.target.value)}>
+                    <option value="urg'ochi">Urgʻochi</option>
+                    <option value="erkak">Erkak</option>
+                  </select>
+                </div>
+
+                {/* Age */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Yoshi (yil)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="0"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                  />
+                </div>
+
+                {/* Weight */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Ogʻirligi (kg)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="1"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                  />
+                </div>
+
+                {/* Status */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Sogʻliq holati</label>
+                  <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+                    <option value="sog'lom">Sogʻlom</option>
+                    <option value="davolanmoqda">Davolanmoqda</option>
+                    <option value="karantin">Karantin</option>
+                  </select>
+                </div>
+
+                {/* Location */}
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Joylashuv / Bino *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Masalan: Ferma A — 1-oʻtov"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Conditional Daily Milk Yield */}
+              {gender === 'urg\'ochi' && (type === 'qoramol' || type === 'echki') && (
+                <div className="login-field" style={{ margin: 0 }}>
+                  <label>Kundalik sut mahsuldorligi (litr)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="0"
+                    value={dailyMilk}
+                    onChange={(e) => setDailyMilk(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Notes */}
+              <div className="login-field" style={{ margin: 0 }}>
+                <label>Qoʻshimcha eslatmalar</label>
+                <textarea
+                  className="input"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Xarakteri yoki o'ziga xosligi..."
+                  style={{ height: '70px', resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setIsAddOpen(false)}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  Bekor qilish
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  Qoʻshish
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

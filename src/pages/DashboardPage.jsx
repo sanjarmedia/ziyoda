@@ -22,19 +22,60 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
+import { useFarm } from '../context/FarmContext';
 import { 
-  animals, 
   dashboardStats, 
   monthlyAnimalData, 
-  animalTypeData, 
   recentActivities 
 } from '../data/mockData';
 import CowIcon from '../components/CowIcon';
 
 export default function DashboardPage() {
+  const { animals, vetRecords } = useFarm();
+
   const activeSick = animals.filter(a => a.status === 'davolanmoqda').length;
   const activeQuarantine = animals.filter(a => a.status === 'karantin').length;
   const activeHealthy = animals.filter(a => a.status === 'sog\'lom').length;
+
+  const totalMilkToday = animals.reduce((sum, a) => sum + (a.dailyMilk || 0), 0);
+
+  // Dynamic pie chart data
+  const typeCounts = animals.reduce((acc, a) => {
+    const type = a.type === 'qoramol' ? 'Qoramol' : a.type === "qo'y" ? "Qo'y" : 'Echki';
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
+  
+  const animalTypeData = [
+    { name: 'Qoramol', value: typeCounts['Qoramol'] || 0, color: '#22c55e' },
+    { name: "Qo'y", value: typeCounts["Qo'y"] || 0, color: '#3b82f6' },
+    { name: 'Echki', value: typeCounts['Echki'] || 0, color: '#f59e0b' },
+  ];
+
+  // Dynamic monthly count chart data (setting June 'Iyn' to current count)
+  const monthlyData = monthlyAnimalData.map(d => {
+    if (d.month === 'Iyn') {
+      return { ...d, count: animals.length };
+    }
+    return d;
+  });
+
+  // Dynamic activities combining new animal entries and vet logs
+  const dynamicActivities = [
+    ...vetRecords.filter(r => r.date === new Date().toISOString().split('T')[0]).map(r => ({
+      id: `vet-${r.id}`,
+      text: `${r.animalName} (${r.animalTag}): ${r.diagnosis}`,
+      time: 'Yaqinda',
+      icon: r.type === 'Emlash' ? '💉' : r.type === 'Davolash' ? '💊' : '🏥'
+    })),
+    ...animals.filter(a => a.entryDate === new Date().toISOString().split('T')[0]).map(a => ({
+      id: `anim-${a.id}`,
+      text: `${a.name} (${a.tag}) roʻyxatga olindi`,
+      time: 'Yaqinda',
+      icon: a.type === 'qoramol' ? '🐄' : a.type === "qo'y" ? '🐑' : '🐐'
+    })),
+    ...recentActivities
+  ].slice(0, 6);
 
   return (
     <div className="page-container animate-fade-in">
@@ -103,7 +144,7 @@ export default function DashboardPage() {
             <Milk size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{dashboardStats.totalMilkToday} litr</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{totalMilkToday} litr</div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bugungi sut mahsuldorligi</div>
           </div>
         </div>
@@ -123,7 +164,7 @@ export default function DashboardPage() {
             <Activity size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{dashboardStats.totalVetVisits} ta faol</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{vetRecords.filter(r => r.status === 'davom etmoqda').length} ta faol</div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Joriy tibbiy ko'riklar</div>
           </div>
         </div>
@@ -135,7 +176,7 @@ export default function DashboardPage() {
           <h3>Chorva bosh soni oʻzgarishi (Yillik)</h3>
           <div style={{ marginTop: '20px' }}>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyAnimalData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(34, 197, 94, 0.06)" />
                 <XAxis dataKey="month" stroke="#6b8f7b" style={{ fontSize: '0.78rem' }} />
                 <YAxis stroke="#6b8f7b" style={{ fontSize: '0.78rem' }} />
@@ -199,7 +240,7 @@ export default function DashboardPage() {
         <div className="glass-card chart-card">
           <h3>Oxirgi harakatlar</h3>
           <div className="activity-list" style={{ marginTop: '16px' }}>
-            {recentActivities.map((act) => (
+            {dynamicActivities.map((act) => (
               <div key={act.id} className="activity-item">
                 <div className="activity-icon">{act.icon}</div>
                 <div className="activity-text">{act.text}</div>

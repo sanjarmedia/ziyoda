@@ -1,15 +1,41 @@
 import React, { useState } from 'react';
-import { feedPlans, feedStock } from '../data/mockData';
+import { X } from 'lucide-react';
+import { useFarm } from '../context/FarmContext';
+import { feedPlans } from '../data/mockData';
 
 export default function FeedPlanPage() {
+  const { feedStock, refillFeedStock } = useFarm();
   const [selectedPlanId, setSelectedPlanId] = useState(feedPlans[0]?.id || 1);
   const [animalCount, setAnimalCount] = useState(10);
   const [duration, setDuration] = useState(7); // default 7 days
+
+  // Refill Modal State
+  const [isRefillOpen, setIsRefillOpen] = useState(false);
+  const [refillName, setRefillName] = useState(feedStock[0]?.name || '');
+  const [refillAmount, setRefillAmount] = useState('');
+  const [refillError, setRefillError] = useState('');
 
   const currentPlan = feedPlans.find((p) => p.id === parseInt(selectedPlanId)) || feedPlans[0];
 
   const calculateTotal = (amount) => {
     return (amount * animalCount * duration).toFixed(1);
+  };
+
+  const handleRefillSubmit = (e) => {
+    e.preventDefault();
+    setRefillError('');
+
+    const amt = parseFloat(refillAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setRefillError('Iltimos, musbat miqdor kiriting!');
+      return;
+    }
+
+    refillFeedStock(refillName, amt);
+    
+    // Reset Form
+    setRefillAmount('');
+    setIsRefillOpen(false);
   };
 
   const getPlanBadgeClass = (type) => {
@@ -96,9 +122,18 @@ export default function FeedPlanPage() {
 
         {/* Stock Level */}
         <div className="glass-card">
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>
-            Ombordagi ozuqa zaxirasi
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+              Ombordagi ozuqa zaxirasi
+            </h3>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => setIsRefillOpen(true)}
+              style={{ padding: '4px 10px', fontSize: '0.75rem', gap: '4px' }}
+            >
+              Toʻldirish
+            </button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {feedStock.map((stock, idx) => {
               let pct = 80;
@@ -164,6 +199,109 @@ export default function FeedPlanPage() {
           </div>
         ))}
       </div>
+      {isRefillOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(10, 15, 13, 0.75)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setIsRefillOpen(false)}
+        >
+          <div 
+            className="glass-card animate-fade-in"
+            style={{
+              width: '90%',
+              maxWidth: '400px',
+              padding: '32px',
+              position: 'relative',
+              boxShadow: 'var(--shadow-lg), var(--shadow-glow-strong)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setIsRefillOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.target.style.color = 'var(--text-muted)'}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px' }}>Ozuqa zaxirasini toʻldirish</h3>
+
+            <form onSubmit={handleRefillSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {refillError && <div className="login-error">{refillError}</div>}
+
+              {/* Feed Name Select */}
+              <div className="login-field" style={{ margin: 0 }}>
+                <label>Ozuqa turi</label>
+                <select 
+                  className="input" 
+                  value={refillName} 
+                  onChange={(e) => setRefillName(e.target.value)}
+                >
+                  {feedStock.map((s, idx) => (
+                    <option key={idx} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Refill Amount */}
+              <div className="login-field" style={{ margin: 0 }}>
+                <label>Miqdori (kg)</label>
+                <input
+                  type="number"
+                  className="input"
+                  min="1"
+                  value={refillAmount}
+                  onChange={(e) => setRefillAmount(e.target.value)}
+                  placeholder="Masalan: 500"
+                  required
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setIsRefillOpen(false)}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  Bekor qilish
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  Toʻldirish
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

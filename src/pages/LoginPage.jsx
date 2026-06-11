@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
-import { users } from '../data/mockData';
+import { useFarm } from '../context/FarmContext';
 import CowIcon from '../components/CowIcon';
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage() {
+  const { login, users } = useFarm();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,15 +27,12 @@ export default function LoginPage({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const user = users.find(
-      (u) => u.username === username && u.password === password
-    );
+    const result = login(username, password);
 
-    if (user) {
-      onLogin(user);
+    if (result.success) {
       navigate('/dashboard');
     } else {
-      setError('Foydalanuvchi nomi yoki parol notoʻgʻri!');
+      setError(result.message);
     }
   };
 

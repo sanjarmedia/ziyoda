@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { FarmProvider, useFarm } from './context/FarmContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -9,25 +10,12 @@ import FeedPlanPage from './pages/FeedPlanPage';
 import VetRecordsPage from './pages/VetRecordsPage';
 import AdminPage from './pages/AdminPage';
 
-export default function App() {
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const handleLogin = (loggedInUser) => {
-    setUser(loggedInUser);
-    localStorage.setItem('currentUser', JSON.stringify(loggedInUser));
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
-  };
+function AppContent() {
+  const { currentUser, logout } = useFarm();
 
   // Protected Route Wrapper
   const ProtectedRoute = ({ children }) => {
-    if (!user) {
+    if (!currentUser) {
       return <Navigate to="/login" replace />;
     }
     return children;
@@ -37,14 +25,14 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public route */}
-        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+        <Route path="/login" element={<LoginPage />} />
 
         {/* Protected layout routes */}
         <Route
           path="/"
           element={
             <ProtectedRoute>
-              <Layout user={user} onLogout={handleLogout} />
+              <Layout user={currentUser} onLogout={logout} />
             </ProtectedRoute>
           }
         >
@@ -62,5 +50,13 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <FarmProvider>
+      <AppContent />
+    </FarmProvider>
   );
 }
