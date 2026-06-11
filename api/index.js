@@ -89,8 +89,14 @@ async function initDb() {
         name VARCHAR(100) PRIMARY KEY,
         amount NUMERIC(10, 2) NOT NULL,
         unit VARCHAR(20) NOT NULL,
-        status VARCHAR(20) NOT NULL
+        status VARCHAR(20) NOT NULL,
+        price NUMERIC(12, 2) DEFAULT 0
       )
+    `);
+
+    // Ensure column exists for existing tables
+    await pool.query(`
+      ALTER TABLE feed_stock ADD COLUMN IF NOT EXISTS price NUMERIC(12, 2) DEFAULT 0
     `);
 
     // 5. Feed Plans Table
@@ -108,6 +114,14 @@ async function initDb() {
     `);
 
     console.log("PostgreSQL Tables verified/created successfully.");
+
+    // Update default prices if they are 0
+    await pool.query("UPDATE feed_stock SET price = 3000 WHERE name = 'Beda pichan' AND (price IS NULL OR price = 0)");
+    await pool.query("UPDATE feed_stock SET price = 4500 WHERE name = 'Arpa yormasi' AND (price IS NULL OR price = 0)");
+    await pool.query("UPDATE feed_stock SET price = 2000 WHERE name = 'Makka silosi' AND (price IS NULL OR price = 0)");
+    await pool.query("UPDATE feed_stock SET price = 5500 WHERE name = 'Kungaboqar shrot' AND (price IS NULL OR price = 0)");
+    await pool.query("UPDATE feed_stock SET price = 1500 WHERE name = 'Tuz' AND (price IS NULL OR price = 0)");
+    await pool.query("UPDATE feed_stock SET price = 25000 WHERE name = 'Vitamin premiksi' AND (price IS NULL OR price = 0)");
 
     // --- Seeding if tables are empty ---
     const usersCount = await pool.query('SELECT COUNT(*) FROM users');
@@ -448,7 +462,8 @@ app.get('/api/feed-stock', async (req, res) => {
     const result = await pool.query('SELECT * FROM feed_stock ORDER BY name ASC');
     const formatted = result.rows.map(item => ({
       ...item,
-      amount: parseFloat(item.amount)
+      amount: parseFloat(item.amount),
+      price: parseFloat(item.price || 0)
     }));
     res.json(formatted);
   } catch (err) {
@@ -457,7 +472,7 @@ app.get('/api/feed-stock', async (req, res) => {
 });
 
 app.post('/api/feed-stock/refill', async (req, res) => {
-  const { name, amount } = req.body;
+  const { name, amount, price } = req.body;
   try {
     const current = await pool.query('SELECT * FROM feed_stock WHERE name = $1', [name]);
     if (current.rows.length > 0) {
@@ -470,12 +485,93 @@ app.post('/api/feed-stock/refill', async (req, res) => {
       }
 
       const result = await pool.query(
-        'UPDATE feed_stock SET amount = $1, status = $2 WHERE name = $3 RETURNING *',
-        [newAmount, newStatus, name]
+        'UPDATE feed_stock SET amount = $1, status = $2, price = COALESCE($3, price) WHERE name = $4 RETURNING *',
+        [newAmount, newStatus, price !== undefined ? parseFloat(price) : null, name]
       );
       const updated = result.rows[0];
       updated.amount = parseFloat(updated.amount);
+      updated.price = parseFloat(updated.price || 0);
       res.json(updated);
+    } else {
+      res.status(404).json({ message: 'Ozuqa turi topilmadi' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/feed-stock', async (req, res) => {
+  const { name, amount, unit, price } = req.body;
+  if (!name || !unit) {
+    return res.status(400).json({ message: 'Nomi va birligi kiritilishi shart!' });
+  }
+  try {
+    const amt = parseFloat(amount || 0);
+    const prc = parseFloat(price || 0);
+    
+    let status = 'yetarli';
+    if (amt < 50) {
+      status = 'juda kam';
+    } else if (amt < 200) {
+      status = 'kam';
+    }
+
+    const result = await pool.query(
+      'INSERT INTO feed_stock (name, amount, unit, status, price) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [name.trim(), amt, unit.trim(), status, prc]
+    );
+    const created = result.rows[0];
+    created.amount = parseFloat(created.amount);
+    created.price = parseFloat(created.price || 0);
+    res.json(created);
+  } catch (err) {
+    if (err.code === '23505') {
+      res.status(400).json({ message: 'Ushbu nomdagi ozuqa turi omborda allaqachon mavjud!' });
+    } else {
+      res.status(500).json({ message: err.message });
+    }
+  }
+});
+
+app.put('/api/feed-stock/:name', async (req, res) => {
+  const { name } = req.params;
+  const { amount, price, unit } = req.body;
+  try {
+    const current = await pool.query('SELECT * FROM feed_stock WHERE name = $1', [name]);
+    if (current.rows.length > 0) {
+      const amt = amount !== undefined ? parseFloat(amount) : parseFloat(current.rows[0].amount);
+      const prc = price !== undefined ? parseFloat(price) : parseFloat(current.rows[0].price || 0);
+      const unt = unit !== undefined ? unit : current.rows[0].unit;
+      
+      let status = 'yetarli';
+      if (amt < 50) {
+        status = 'juda kam';
+      } else if (amt < 200) {
+        status = 'kam';
+      }
+
+      const result = await pool.query(
+        'UPDATE feed_stock SET amount = $1, price = $2, unit = $3, status = $4 WHERE name = $5 RETURNING *',
+        [amt, prc, unt, status, name]
+      );
+      const updated = result.rows[0];
+      updated.amount = parseFloat(updated.amount);
+      updated.price = parseFloat(updated.price || 0);
+      res.json(updated);
+    } else {
+      res.status(404).json({ message: 'Ozuqa turi topilmadi' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete('/api/feed-stock/:name', async (req, res) => {
+  const { name } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM feed_stock WHERE name = $1 RETURNING *', [name]);
+    if (result.rows.length > 0) {
+      res.json({ message: 'Ozuqa turi muvaffaqiyatli oʻchirildi' });
     } else {
       res.status(404).json({ message: 'Ozuqa turi topilmadi' });
     }

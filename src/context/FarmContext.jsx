@@ -13,6 +13,38 @@ export function FarmProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // --- Loader States ---
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isMutating, setIsMutating] = useState(false);
+
+  // Helper to start loading bar
+  const simulateProgress = () => {
+    setIsGlobalLoading(true);
+    setLoadingProgress(10);
+    const interval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(interval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 100);
+    return interval;
+  };
+
+  // Helper to complete loading bar
+  const endProgress = (interval) => {
+    if (interval) clearInterval(interval);
+    setLoadingProgress(100);
+    setTimeout(() => {
+      setIsGlobalLoading(false);
+      setLoadingProgress(0);
+    }, 300);
+  };
+
   // --- API Loaders ---
   const fetchUsers = async () => {
     try {
@@ -74,13 +106,28 @@ export function FarmProvider({ children }) {
     }
   };
 
-  // Load all tables on mount
+  // Centralized initial load to handle skeletons and top progress bar
+  const loadAllData = async () => {
+    setIsInitialLoading(true);
+    const p = simulateProgress();
+    try {
+      await Promise.all([
+        fetchUsers(),
+        fetchAnimals(),
+        fetchVetRecords(),
+        fetchFeedStock(),
+        fetchFeedPlans()
+      ]);
+    } catch (err) {
+      console.error("Error loading initial data:", err);
+    } finally {
+      setIsInitialLoading(false);
+      endProgress(p);
+    }
+  };
+
   useEffect(() => {
-    fetchUsers();
-    fetchAnimals();
-    fetchVetRecords();
-    fetchFeedStock();
-    fetchFeedPlans();
+    loadAllData();
   }, []);
 
   // Sync currentUser session to localStorage
@@ -94,6 +141,8 @@ export function FarmProvider({ children }) {
 
   // --- Authentication actions ---
   const login = async (username, password) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -108,6 +157,9 @@ export function FarmProvider({ children }) {
       return { success: false, message: result.message || 'Kirishda xatolik yuz berdi!' };
     } catch (err) {
       return { success: false, message: 'Server bilan aloqa uzildi!' };
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
@@ -117,7 +169,8 @@ export function FarmProvider({ children }) {
 
   const updateSelfProfile = async (updatedFields) => {
     if (!currentUser) return;
-    
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/users/${currentUser.id}`, {
         method: 'PUT',
@@ -127,17 +180,22 @@ export function FarmProvider({ children }) {
       const result = await res.json();
       if (res.ok) {
         setCurrentUser(result);
-        fetchUsers(); // Sync list
+        await fetchUsers(); // Sync list
       } else {
         throw new Error(result.message || 'Profilni saqlab boʻlmadi!');
       }
     } catch (err) {
       throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   // --- Animal actions ---
   const addAnimal = async (animalData) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/animals', {
         method: 'POST',
@@ -147,15 +205,20 @@ export function FarmProvider({ children }) {
       if (res.ok) {
         const created = await res.json();
         setAnimals(prev => [...prev, created]);
-        fetchAnimals(); // Refresh list to get proper Tag IDs from DB
+        await fetchAnimals(); // Refresh list to get proper Tag IDs from DB
         return created;
       }
     } catch (err) {
       console.error("Error adding animal:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const updateAnimal = async (id, fields) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/animals/${id}`, {
         method: 'PUT',
@@ -165,28 +228,38 @@ export function FarmProvider({ children }) {
       if (res.ok) {
         const updated = await res.json();
         setAnimals(prev => prev.map(a => a.id === id ? updated : a));
-        fetchAnimals();
+        await fetchAnimals();
       }
     } catch (err) {
       console.error("Error updating animal:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const deleteAnimal = async (id) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/animals/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setAnimals(prev => prev.filter(a => a.id !== id));
-        fetchAnimals();
-        fetchVetRecords(); // cascade delete updates
+        await fetchAnimals();
+        await fetchVetRecords(); // cascade delete updates
       }
     } catch (err) {
       console.error("Error deleting animal:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   // --- Vet Records actions ---
   const addVetRecord = async (recordData) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/vet-records', {
         method: 'POST',
@@ -196,16 +269,21 @@ export function FarmProvider({ children }) {
       if (res.ok) {
         const created = await res.json();
         setVetRecords(prev => [created, ...prev]);
-        fetchVetRecords();
-        fetchAnimals(); // Reactive status changes
+        await fetchVetRecords();
+        await fetchAnimals(); // Reactive status changes
         return created;
       }
     } catch (err) {
       console.error("Error adding vet record:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const updateVetRecord = async (id, fields) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/vet-records/${id}`, {
         method: 'PUT',
@@ -215,46 +293,133 @@ export function FarmProvider({ children }) {
       if (res.ok) {
         const updated = await res.json();
         setVetRecords(prev => prev.map(r => r.id === id ? updated : r));
-        fetchVetRecords();
-        fetchAnimals(); // Reactive status resolution
+        await fetchVetRecords();
+        await fetchAnimals(); // Reactive status resolution
       }
     } catch (err) {
       console.error("Error updating vet record:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const deleteVetRecord = async (id) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/vet-records/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setVetRecords(prev => prev.filter(r => r.id !== id));
-        fetchVetRecords();
+        await fetchVetRecords();
       }
     } catch (err) {
       console.error("Error deleting vet record:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   // --- Feed Stock actions ---
-  const refillFeedStock = async (name, amount) => {
+  const refillFeedStock = async (name, amount, price) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/feed-stock/refill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, amount })
+        body: JSON.stringify({ name, amount, price })
       });
       if (res.ok) {
         const updated = await res.json();
         setFeedStock(prev => prev.map(item => item.name === name ? updated : item));
-        fetchFeedStock();
+        await fetchFeedStock();
       }
     } catch (err) {
       console.error("Error refilling feed stock:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
+    }
+  };
+
+  const addFeedStock = async (stockData) => {
+    const p = simulateProgress();
+    setIsMutating(true);
+    try {
+      const res = await fetch('/api/feed-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stockData)
+      });
+      const created = await res.json();
+      if (res.ok) {
+        setFeedStock(prev => [...prev, created]);
+        await fetchFeedStock();
+        return created;
+      } else {
+        throw new Error(created.message || 'Ozuqa turi qoʻshib boʻlmadi!');
+      }
+    } catch (err) {
+      throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
+    }
+  };
+
+  const updateFeedStock = async (name, fields) => {
+    const p = simulateProgress();
+    setIsMutating(true);
+    try {
+      const res = await fetch(`/api/feed-stock/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+      });
+      const updated = await res.json();
+      if (res.ok) {
+        setFeedStock(prev => prev.map(item => item.name === name ? updated : item));
+        await fetchFeedStock();
+        return updated;
+      } else {
+        throw new Error(updated.message || 'Ozuqa zaxirasi yangilab boʻlmadi!');
+      }
+    } catch (err) {
+      throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
+    }
+  };
+
+  const deleteFeedStock = async (name) => {
+    const p = simulateProgress();
+    setIsMutating(true);
+    try {
+      const res = await fetch(`/api/feed-stock/${encodeURIComponent(name)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setFeedStock(prev => prev.filter(item => item.name !== name));
+        await fetchFeedStock();
+      } else {
+        const result = await res.json();
+        throw new Error(result.message || 'Ozuqa turi oʻchirib boʻlmadi!');
+      }
+    } catch (err) {
+      throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   // --- Feed Plans actions ---
   const addFeedPlan = async (planData) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/feed-plans', {
         method: 'POST',
@@ -264,15 +429,20 @@ export function FarmProvider({ children }) {
       if (res.ok) {
         const created = await res.json();
         setFeedPlans(prev => [...prev, created]);
-        fetchFeedPlans();
+        await fetchFeedPlans();
         return created;
       }
     } catch (err) {
       console.error("Error adding feed plan:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const updateFeedPlan = async (id, fields) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/feed-plans/${id}`, {
         method: 'PUT',
@@ -282,26 +452,36 @@ export function FarmProvider({ children }) {
       if (res.ok) {
         const updated = await res.json();
         setFeedPlans(prev => prev.map(p => p.id === id ? updated : p));
-        fetchFeedPlans();
+        await fetchFeedPlans();
       }
     } catch (err) {
       console.error("Error updating feed plan:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const deleteFeedPlan = async (id) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/feed-plans/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setFeedPlans(prev => prev.filter(p => p.id !== id));
-        fetchFeedPlans();
+        await fetchFeedPlans();
       }
     } catch (err) {
       console.error("Error deleting feed plan:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const consumeFeedStock = async (items) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/feed-stock/consume', {
         method: 'POST',
@@ -310,18 +490,23 @@ export function FarmProvider({ children }) {
       });
       const result = await res.json();
       if (res.ok) {
-        fetchFeedStock();
+        await fetchFeedStock();
         return { success: true };
       } else {
         throw new Error(result.message || 'Ozuqani sarflab boʻlmadi!');
       }
     } catch (err) {
       throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   // --- User CRUD actions (for AdminPanel) ---
   const addUser = async (userData) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
@@ -331,17 +516,22 @@ export function FarmProvider({ children }) {
       const result = await res.json();
       if (res.ok) {
         setUsers(prev => [...prev, result]);
-        fetchUsers();
+        await fetchUsers();
         return result;
       } else {
         throw new Error(result.message || 'Foydalanuvchi qoʻshib boʻlmadi!');
       }
     } catch (err) {
       throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
   const updateUser = async (id, fields) => {
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/users/${id}`, {
         method: 'PUT',
@@ -351,7 +541,7 @@ export function FarmProvider({ children }) {
       const result = await res.json();
       if (res.ok) {
         setUsers(prev => prev.map(u => u.id === id ? result : u));
-        fetchUsers();
+        await fetchUsers();
         if (currentUser && currentUser.id === id) {
           setCurrentUser(result);
         }
@@ -360,6 +550,9 @@ export function FarmProvider({ children }) {
       }
     } catch (err) {
       throw new Error(err.message);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
@@ -367,14 +560,19 @@ export function FarmProvider({ children }) {
     if (currentUser && currentUser.id === id) {
       throw new Error('Tizimga kirib turgan foydalanuvchini oʻchirib boʻlmaydi!');
     }
+    const p = simulateProgress();
+    setIsMutating(true);
     try {
       const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setUsers(prev => prev.filter(u => u.id !== id));
-        fetchUsers();
+        await fetchUsers();
       }
     } catch (err) {
       console.error("Error deleting user:", err);
+    } finally {
+      setIsMutating(false);
+      endProgress(p);
     }
   };
 
@@ -386,6 +584,10 @@ export function FarmProvider({ children }) {
       feedStock,
       feedPlans,
       currentUser,
+      isInitialLoading,
+      isGlobalLoading,
+      loadingProgress,
+      isMutating,
       login,
       logout,
       updateSelfProfile,
@@ -396,6 +598,9 @@ export function FarmProvider({ children }) {
       updateVetRecord,
       deleteVetRecord,
       refillFeedStock,
+      addFeedStock,
+      updateFeedStock,
+      deleteFeedStock,
       addFeedPlan,
       updateFeedPlan,
       deleteFeedPlan,

@@ -12,7 +12,7 @@ import VetRecordsPage from './pages/VetRecordsPage';
 import AdminPage from './pages/AdminPage';
 
 function AppContent() {
-  const { currentUser, logout } = useFarm();
+  const { currentUser, logout, isGlobalLoading, loadingProgress, isMutating } = useFarm();
 
   // Protected Route Wrapper with role validation
   const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -27,6 +27,27 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      {/* Top YouTube-style progress bar */}
+      {isGlobalLoading && (
+        <div 
+          className="top-loading-bar" 
+          style={{ 
+            width: `${loadingProgress}%`,
+            opacity: loadingProgress === 100 ? 0 : 1
+          }} 
+        />
+      )}
+
+      {/* Global mutation lock spinner overlay */}
+      {isMutating && (
+        <div className="loading-overlay">
+          <div className="loading-box">
+            <div className="spinner"></div>
+            <span>Yuklanmoqda...</span>
+          </div>
+        </div>
+      )}
+
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />

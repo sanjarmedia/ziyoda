@@ -5,7 +5,7 @@ import { useFarm } from '../context/FarmContext';
 
 export default function AnimalsPage() {
   const navigate = useNavigate();
-  const { animals, addAnimal, currentUser } = useFarm();
+  const { animals, addAnimal, currentUser, isInitialLoading } = useFarm();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -74,6 +74,45 @@ export default function AnimalsPage() {
     setDailyMilk(0);
     setIsAddOpen(false);
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="page-container animate-fade-in">
+        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <div className="skeleton skeleton-title" style={{ height: '32px', width: '250px', marginBottom: '12px' }}></div>
+            <div className="skeleton skeleton-text" style={{ width: '400px' }}></div>
+          </div>
+          <div className="skeleton skeleton-button" style={{ width: '130px', height: '38px' }}></div>
+        </header>
+
+        <div className="filters-bar">
+          <div className="skeleton" style={{ flex: 1, height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+          <div className="skeleton" style={{ width: '150px', height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+          <div className="skeleton" style={{ width: '150px', height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+        </div>
+
+        <section className="animals-grid">
+          {[1, 2, 3, 4, 5, 6].map(n => (
+            <div key={n} className="glass-card" style={{ height: '240px' }}>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <div className="skeleton skeleton-avatar"></div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="skeleton skeleton-text" style={{ width: '60%', height: '18px' }}></div>
+                  <div className="skeleton skeleton-text" style={{ width: '40%', height: '14px' }}></div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+                <div className="skeleton skeleton-text" style={{ height: '14px' }}></div>
+                <div className="skeleton skeleton-text" style={{ height: '14px' }}></div>
+                <div className="skeleton skeleton-text" style={{ height: '14px' }}></div>
+              </div>
+            </div>
+          ))}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container animate-fade-in">

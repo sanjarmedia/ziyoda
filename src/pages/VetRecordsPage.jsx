@@ -3,7 +3,7 @@ import { Search, Filter, Stethoscope, Table, LayoutGrid, Plus, X } from 'lucide-
 import { useFarm } from '../context/FarmContext';
 
 export default function VetRecordsPage() {
-  const { vetRecords, addVetRecord, updateVetRecord, animals, currentUser } = useFarm();
+  const { vetRecords, addVetRecord, updateVetRecord, animals, currentUser, isInitialLoading } = useFarm();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -91,6 +91,42 @@ export default function VetRecordsPage() {
         return 'badge-treating';
     }
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="page-container animate-fade-in">
+        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <div className="skeleton skeleton-title" style={{ height: '32px', width: '250px', marginBottom: '12px' }}></div>
+            <div className="skeleton skeleton-text" style={{ width: '400px' }}></div>
+          </div>
+          <div className="skeleton skeleton-button" style={{ width: '130px', height: '38px' }}></div>
+        </header>
+
+        <div className="filters-bar">
+          <div className="skeleton" style={{ flex: 1, height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+          <div className="skeleton" style={{ width: '150px', height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+          <div className="skeleton" style={{ width: '150px', height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+          <div className="skeleton" style={{ width: '100px', height: '42px', borderRadius: 'var(--radius-sm)' }}></div>
+        </div>
+
+        {/* Skeleton Table Card */}
+        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <div key={n} style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                <div className="skeleton" style={{ width: '80px', height: '24px' }}></div>
+                <div className="skeleton" style={{ width: '120px', height: '24px' }}></div>
+                <div className="skeleton" style={{ flex: 2, height: '24px' }}></div>
+                <div className="skeleton" style={{ flex: 1, height: '24px' }}></div>
+                <div className="skeleton" style={{ width: '100px', height: '24px' }}></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container animate-fade-in">

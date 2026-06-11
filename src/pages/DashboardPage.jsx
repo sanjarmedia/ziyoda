@@ -31,7 +31,7 @@ import {
 import CowIcon from '../components/CowIcon';
 
 export default function DashboardPage() {
-  const { animals, vetRecords } = useFarm();
+  const { animals, vetRecords, isInitialLoading } = useFarm();
 
   const activeSick = animals.filter(a => a.status === 'davolanmoqda').length;
   const activeQuarantine = animals.filter(a => a.status === 'karantin').length;
@@ -76,6 +76,42 @@ export default function DashboardPage() {
     })),
     ...recentActivities
   ].slice(0, 6);
+
+  if (isInitialLoading) {
+    return (
+      <div className="page-container animate-fade-in">
+        <header className="page-header" style={{ marginBottom: '24px' }}>
+          <div className="skeleton skeleton-title" style={{ height: '32px', width: '250px', marginBottom: '12px' }}></div>
+          <div className="skeleton skeleton-text" style={{ width: '400px' }}></div>
+        </header>
+
+        {/* Stats Grid Skeleton */}
+        <section className="stats-grid" style={{ marginBottom: '32px' }}>
+          {[1, 2, 3, 4].map(n => (
+            <div key={n} className="glass-card" style={{ height: '100px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                <div className="skeleton skeleton-text" style={{ width: '60px', height: '14px' }}></div>
+                <div className="skeleton skeleton-title" style={{ width: '120px', height: '28px', margin: 0 }}></div>
+              </div>
+              <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%' }}></div>
+            </div>
+          ))}
+        </section>
+
+        {/* Detail Grid Skeleton (Charts) */}
+        <div className="detail-grid">
+          <div className="glass-card" style={{ height: '320px' }}>
+            <div className="skeleton skeleton-title" style={{ width: '180px', marginBottom: '20px' }}></div>
+            <div className="skeleton" style={{ width: '100%', height: '220px', borderRadius: 'var(--radius-md)' }}></div>
+          </div>
+          <div className="glass-card" style={{ height: '320px' }}>
+            <div className="skeleton skeleton-title" style={{ width: '150px', marginBottom: '20px' }}></div>
+            <div className="skeleton" style={{ width: '100%', height: '220px', borderRadius: 'var(--radius-md)' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container animate-fade-in">

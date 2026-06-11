@@ -54,7 +54,11 @@ export default function LandingPage() {
 
   const currentPlan = feedPlans.find(p => p.id.toString() === selectedPlanId) || feedPlans[0];
   const currentPlanItems = currentPlan ? currentPlan.items : [];
-  const currentPlanCost = currentPlan ? currentPlan.totalCost : 0;
+  const currentPlanCost = currentPlan ? currentPlanItems.reduce((acc, item) => {
+    const stock = feedStock.find(s => s.name === item.name);
+    const price = stock ? parseFloat(stock.price) || 0 : 0;
+    return acc + (item.amount * price);
+  }, 0) : 0;
 
   const calculateTotal = (amount) => {
     return (amount * animalCount * duration).toFixed(0);

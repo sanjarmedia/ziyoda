@@ -5,7 +5,7 @@ import { useFarm } from '../context/FarmContext';
 export default function AnimalDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { animals, vetRecords, updateAnimal, deleteAnimal, addVetRecord, updateVetRecord, feedPlans, currentUser } = useFarm();
+  const { animals, vetRecords, updateAnimal, deleteAnimal, addVetRecord, updateVetRecord, feedPlans, feedStock, currentUser } = useFarm();
   
   const animal = animals.find((a) => a.id === parseInt(id));
 
@@ -326,7 +326,13 @@ export default function AnimalDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-glass)', paddingTop: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 <span>Mavsum: <strong>{plan.season}</strong></span>
                 <span>Kaloriya: <strong>{plan.calories.toLocaleString()} kkal</strong></span>
-                <span>Kunlik: <strong style={{ color: 'var(--green-light)' }}>{plan.totalCost.toLocaleString('uz-UZ')} so'm</strong></span>
+                <span>Kunlik: <strong style={{ color: 'var(--green-light)' }}>{
+                  (plan.items || []).reduce((acc, item) => {
+                    const stock = feedStock.find(s => s.name === item.name);
+                    const price = stock ? parseFloat(stock.price) || 0 : 0;
+                    return acc + (item.amount * price);
+                  }, 0).toLocaleString('uz-UZ')
+                } so'm</strong></span>
               </div>
             </div>
           ) : (
