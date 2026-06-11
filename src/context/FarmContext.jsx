@@ -7,6 +7,7 @@ export function FarmProvider({ children }) {
   const [animals, setAnimals] = useState([]);
   const [vetRecords, setVetRecords] = useState([]);
   const [feedStock, setFeedStock] = useState([]);
+  const [feedPlans, setFeedPlans] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('currentUser');
     return saved ? JSON.parse(saved) : null;
@@ -61,12 +62,25 @@ export function FarmProvider({ children }) {
     }
   };
 
+  const fetchFeedPlans = async () => {
+    try {
+      const res = await fetch('/api/feed-plans');
+      if (res.ok) {
+        const data = await res.json();
+        setFeedPlans(data);
+      }
+    } catch (err) {
+      console.error("Error fetching feed plans:", err);
+    }
+  };
+
   // Load all tables on mount
   useEffect(() => {
     fetchUsers();
     fetchAnimals();
     fetchVetRecords();
     fetchFeedStock();
+    fetchFeedPlans();
   }, []);
 
   // Sync currentUser session to localStorage
@@ -239,6 +253,73 @@ export function FarmProvider({ children }) {
     }
   };
 
+  // --- Feed Plans actions ---
+  const addFeedPlan = async (planData) => {
+    try {
+      const res = await fetch('/api/feed-plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(planData)
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setFeedPlans(prev => [...prev, created]);
+        fetchFeedPlans();
+        return created;
+      }
+    } catch (err) {
+      console.error("Error adding feed plan:", err);
+    }
+  };
+
+  const updateFeedPlan = async (id, fields) => {
+    try {
+      const res = await fetch(`/api/feed-plans/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setFeedPlans(prev => prev.map(p => p.id === id ? updated : p));
+        fetchFeedPlans();
+      }
+    } catch (err) {
+      console.error("Error updating feed plan:", err);
+    }
+  };
+
+  const deleteFeedPlan = async (id) => {
+    try {
+      const res = await fetch(`/api/feed-plans/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setFeedPlans(prev => prev.filter(p => p.id !== id));
+        fetchFeedPlans();
+      }
+    } catch (err) {
+      console.error("Error deleting feed plan:", err);
+    }
+  };
+
+  const consumeFeedStock = async (items) => {
+    try {
+      const res = await fetch('/api/feed-stock/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        fetchFeedStock();
+        return { success: true };
+      } else {
+        throw new Error(result.message || 'Ozuqani sarflab boʻlmadi!');
+      }
+    } catch (err) {
+      throw new Error(err.message);
+    }
+  };
+
   // --- User CRUD actions (for AdminPanel) ---
   const addUser = async (userData) => {
     try {
@@ -303,6 +384,7 @@ export function FarmProvider({ children }) {
       animals,
       vetRecords,
       feedStock,
+      feedPlans,
       currentUser,
       login,
       logout,
@@ -314,6 +396,10 @@ export function FarmProvider({ children }) {
       updateVetRecord,
       deleteVetRecord,
       refillFeedStock,
+      addFeedPlan,
+      updateFeedPlan,
+      deleteFeedPlan,
+      consumeFeedStock,
       addUser,
       updateUser,
       deleteUser

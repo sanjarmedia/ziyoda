@@ -1158,3 +1158,48 @@ tbody tr:hover {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.3);
 }
+
+/* ===== Landing Page Styles ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.reveal-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nav-hover-link {
+  position: relative;
+  transition: color 0.25s ease;
+}
+
+.nav-hover-link:hover {
+  color: var(--green-light) !important;
+}
+
+.nav-hover-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--green-light);
+  transition: width 0.25s ease;
+}
+
+.nav-hover-link:hover::after {
+  width: 100%;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}

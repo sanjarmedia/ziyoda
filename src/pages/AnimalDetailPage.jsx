@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Trash2, Plus, X } from 'lucide-react';
 import { useFarm } from '../context/FarmContext';
-import { feedPlans } from '../data/mockData';
-
 export default function AnimalDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { animals, vetRecords, updateAnimal, deleteAnimal, addVetRecord, updateVetRecord, currentUser } = useFarm();
+  const { animals, vetRecords, updateAnimal, deleteAnimal, addVetRecord, updateVetRecord, feedPlans, currentUser } = useFarm();
   
   const animal = animals.find((a) => a.id === parseInt(id));
 

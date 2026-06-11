@@ -6,7 +6,8 @@ import {
   users as initialUsers, 
   animals as initialAnimals, 
   vetRecords as initialVetRecords, 
-  feedStock as initialFeedStock 
+  feedStock as initialFeedStock,
+  feedPlans as initialFeedPlans
 } from '../src/data/mockData.js';
 
 dotenv.config();
@@ -92,6 +93,20 @@ async function initDb() {
       )
     `);
 
+    // 5. Feed Plans Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS feed_plans (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        "animalType" VARCHAR(50) NOT NULL,
+        description TEXT,
+        items JSONB NOT NULL,
+        "totalCost" NUMERIC(12, 2) DEFAULT 0,
+        calories INTEGER DEFAULT 0,
+        season VARCHAR(50)
+      )
+    `);
+
     console.log("PostgreSQL Tables verified/created successfully.");
 
     // --- Seeding if tables are empty ---
@@ -141,6 +156,19 @@ async function initDb() {
           [s.name, s.amount, s.unit, s.status]
         );
       }
+    }
+
+    const plansCount = await pool.query('SELECT COUNT(*) FROM feed_plans');
+    if (parseInt(plansCount.rows[0].count) === 0) {
+      console.log("Seeding feed plans...");
+      for (const p of initialFeedPlans) {
+        await pool.query(
+          'INSERT INTO feed_plans (id, name, "animalType", description, items, "totalCost", calories, season) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [p.id, p.name, p.animalType, p.description, JSON.stringify(p.items), p.totalCost, p.calories, p.season]
+        );
+      }
+      // Reset sequence
+      await pool.query("SELECT setval('feed_plans_id_seq', COALESCE((SELECT MAX(id)+1 FROM feed_plans), 1), false)");
     }
 
     console.log("Database seeded successfully.");
@@ -453,6 +481,138 @@ app.post('/api/feed-stock/refill', async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// 6. Feed Plans CRUD
+app.get('/api/feed-plans', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM feed_plans ORDER BY id ASC');
+    const formatted = result.rows.map(p => ({
+      ...p,
+      totalCost: parseFloat(p.totalCost),
+      calories: parseInt(p.calories)
+    }));
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/feed-plans', async (req, res) => {
+  const { name, animalType, description, items, totalCost, calories, season } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO feed_plans (name, "animalType", description, items, "totalCost", calories, season) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [name, animalType, description, JSON.stringify(items), totalCost, calories, season]
+    );
+    const created = result.rows[0];
+    created.totalCost = parseFloat(created.totalCost);
+    created.calories = parseInt(created.calories);
+    res.json(created);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put('/api/feed-plans/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, animalType, description, items, totalCost, calories, season } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE feed_plans SET 
+        name = COALESCE($1, name), 
+        "animalType" = COALESCE($2, "animalType"), 
+        description = COALESCE($3, description), 
+        items = COALESCE($4, items), 
+        "totalCost" = COALESCE($5, "totalCost"), 
+        calories = COALESCE($6, calories), 
+        season = COALESCE($7, season) 
+      WHERE id = $8 RETURNING *`,
+      [name, animalType, description, items ? JSON.stringify(items) : null, totalCost, calories, season, id]
+    );
+    if (result.rows.length > 0) {
+      const updated = result.rows[0];
+      updated.totalCost = parseFloat(updated.totalCost);
+      updated.calories = parseInt(updated.calories);
+      res.json(updated);
+    } else {
+      res.status(404).json({ message: 'Ratsion topilmadi' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete('/api/feed-plans/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM feed_plans WHERE id = $1', [id]);
+    res.json({ message: 'Ratsion oʻchirildi' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// 7. Feed Stock Consumption
+app.post('/api/feed-stock/consume', async (req, res) => {
+  const { items } = req.body;
+  
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: 'Sarf qilinadigan ozuqalar topilmadi!' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Verify sufficient stock for all requested items
+    for (const item of items) {
+      const stockRes = await client.query('SELECT amount, unit FROM feed_stock WHERE name = $1', [item.name]);
+      if (stockRes.rows.length === 0) {
+        throw new Error(`Omborda '${item.name}' nomli ozuqa turi topilmadi!`);
+      }
+      
+      const currentAmount = parseFloat(stockRes.rows[0].amount);
+      const consumeAmount = parseFloat(item.amount);
+      
+      if (currentAmount < consumeAmount) {
+        throw new Error(`Omborda '${item.name}' ozuqasidan yetarli miqdor mavjud emas! (Talab etiladi: ${consumeAmount} ${stockRes.rows[0].unit}, mavjud: ${currentAmount} ${stockRes.rows[0].unit})`);
+      }
+    }
+
+    // 2. Perform updates
+    const updatedStock = [];
+    for (const item of items) {
+      const stockRes = await client.query('SELECT amount, unit FROM feed_stock WHERE name = $1', [item.name]);
+      const currentAmount = parseFloat(stockRes.rows[0].amount);
+      const consumeAmount = parseFloat(item.amount);
+      
+      const newAmount = currentAmount - consumeAmount;
+      let newStatus = 'yetarli';
+      if (newAmount < 50) {
+        newStatus = 'juda kam';
+      } else if (newAmount < 200) {
+        newStatus = 'kam';
+      }
+
+      const updateRes = await client.query(
+        'UPDATE feed_stock SET amount = $1, status = $2 WHERE name = $3 RETURNING *',
+        [newAmount, newStatus, item.name]
+      );
+      
+      const updatedItem = updateRes.rows[0];
+      updatedItem.amount = parseFloat(updatedItem.amount);
+      updatedStock.push(updatedItem);
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Ozuqa ombordan chegirildi', updatedStock });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ message: err.message });
+  } finally {
+    client.release();
   }
 });
 
