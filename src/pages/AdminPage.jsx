@@ -62,7 +62,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleUserSubmit = (e) => {
+  const handleUserSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -73,7 +73,7 @@ export default function AdminPage() {
 
     try {
       if (editMode) {
-        updateUser(selectedUserId, {
+        await updateUser(selectedUserId, {
           fullName: fullName.trim(),
           username: username.trim(),
           password: password.trim(),
@@ -81,7 +81,7 @@ export default function AdminPage() {
           avatar
         });
       } else {
-        addUser({
+        await addUser({
           fullName: fullName.trim(),
           username: username.trim(),
           password: password.trim(),

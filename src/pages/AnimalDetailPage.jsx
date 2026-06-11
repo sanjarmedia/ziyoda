@@ -7,7 +7,7 @@ import { feedPlans } from '../data/mockData';
 export default function AnimalDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { animals, vetRecords, updateAnimal, deleteAnimal, addVetRecord, currentUser } = useFarm();
+  const { animals, vetRecords, updateAnimal, deleteAnimal, addVetRecord, updateVetRecord, currentUser } = useFarm();
   
   const animal = animals.find((a) => a.id === parseInt(id));
 
@@ -133,22 +133,26 @@ export default function AnimalDetailPage() {
           Ortga qaytish
         </button>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => setIsEditOpen(true)}
-            style={{ padding: '8px 16px', gap: '6px' }}
-          >
-            <Edit size={14} />
-            Tahrirlash
-          </button>
-          <button 
-            className="btn btn-danger" 
-            onClick={() => setIsDeleteOpen(true)}
-            style={{ padding: '8px 16px', gap: '6px' }}
-          >
-            <Trash2 size={14} />
-            Oʻchirish
-          </button>
+          {currentUser?.role !== 'veterinar' && (
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => setIsEditOpen(true)}
+              style={{ padding: '8px 16px', gap: '6px' }}
+            >
+              <Edit size={14} />
+              Tahrirlash
+            </button>
+          )}
+          {currentUser?.role !== 'veterinar' && (
+            <button 
+              className="btn btn-danger" 
+              onClick={() => setIsDeleteOpen(true)}
+              style={{ padding: '8px 16px', gap: '6px' }}
+            >
+              <Trash2 size={14} />
+              Oʻchirish
+            </button>
+          )}
         </div>
       </div>
 
@@ -235,14 +239,16 @@ export default function AnimalDetailPage() {
         <div className="glass-card detail-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ margin: 0 }}>Tibbiyot va Davolash tarixi</h3>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => setIsAddVetOpen(true)}
-              style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '4px' }}
-            >
-              <Plus size={12} />
-              Yozuv qoʻshish
-            </button>
+            {currentUser?.role !== 'fermer' && (
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setIsAddVetOpen(true)}
+                style={{ padding: '6px 12px', fontSize: '0.78rem', gap: '4px' }}
+              >
+                <Plus size={12} />
+                Yozuv qoʻshish
+              </button>
+            )}
           </div>
           {records.length > 0 ? (
             <div className="activity-list" style={{ marginTop: '16px' }}>
@@ -255,9 +261,40 @@ export default function AnimalDetailPage() {
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                     <strong>Muolaja:</strong> {rec.treatment}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    <span>Shifokor: {rec.doctor}</span>
-                    <span style={{ color: 'var(--green-light)', fontWeight: 600 }}>{rec.cost.toLocaleString('uz-UZ')} so'm</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', alignItems: 'center' }}>
+                    <span>Shifokor: {rec.doctor} ({rec.type})</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--green-light)', fontWeight: 600 }}>{rec.cost.toLocaleString('uz-UZ')} so'm</span>
+                      <span className={`badge ${rec.status === 'yakunlangan' ? 'badge-healthy' : 'badge-treating'}`} style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+                        {rec.status}
+                      </span>
+                      {rec.status === 'davom etmoqda' && currentUser?.role !== 'fermer' && (
+                        <button
+                          onClick={() => updateVetRecord(rec.id, { status: 'yakunlangan' })}
+                          style={{
+                            background: 'rgba(34, 197, 94, 0.15)',
+                            border: '1px solid rgba(34, 197, 94, 0.3)',
+                            color: 'var(--green-light)',
+                            fontSize: '0.7rem',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'var(--green-primary)';
+                            e.target.style.color = '#fff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'rgba(34, 197, 94, 0.15)';
+                            e.target.style.color = 'var(--green-light)';
+                          }}
+                        >
+                          Yakunlash
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

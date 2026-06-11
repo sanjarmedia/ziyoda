@@ -3,7 +3,7 @@ import { Search, Filter, Stethoscope, Table, LayoutGrid, Plus, X } from 'lucide-
 import { useFarm } from '../context/FarmContext';
 
 export default function VetRecordsPage() {
-  const { vetRecords, addVetRecord, animals, currentUser } = useFarm();
+  const { vetRecords, addVetRecord, updateVetRecord, animals, currentUser } = useFarm();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -104,14 +104,16 @@ export default function VetRecordsPage() {
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Jami xarajat:</div>
             <strong style={{ fontSize: '1.25rem', color: 'var(--green-light)', fontWeight: 800 }}>{totalCost.toLocaleString('uz-UZ')} soʻm</strong>
           </div>
-          <button 
-            className="btn btn-primary" 
-            onClick={() => setIsAddOpen(true)}
-            style={{ gap: '8px' }}
-          >
-            <Plus size={16} />
-            Yozuv qoʻshish
-          </button>
+          {currentUser?.role !== 'fermer' && (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setIsAddOpen(true)}
+              style={{ gap: '8px' }}
+            >
+              <Plus size={16} />
+              Yozuv qoʻshish
+            </button>
+          )}
         </div>
       </header>
 
@@ -212,6 +214,7 @@ export default function VetRecordsPage() {
                   <th>Veterinar</th>
                   <th style={{ textAlign: 'right' }}>Xarajat</th>
                   <th>Holati</th>
+                  {currentUser?.role !== 'fermer' && <th style={{ textAlign: 'center' }}>Amallar</th>}
                 </tr>
               </thead>
               <tbody>
@@ -241,6 +244,21 @@ export default function VetRecordsPage() {
                         {record.status}
                       </span>
                     </td>
+                    {currentUser?.role !== 'fermer' && (
+                      <td style={{ textAlign: 'center' }}>
+                        {record.status === 'davom etmoqda' ? (
+                          <button
+                            onClick={() => updateVetRecord(record.id, { status: 'yakunlangan' })}
+                            className="btn btn-secondary"
+                            style={{ padding: '2px 6px', fontSize: '0.7rem', height: 'auto', display: 'inline-block' }}
+                          >
+                            Yakunlash
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -289,6 +307,17 @@ export default function VetRecordsPage() {
                   <span>Ko'rik: <strong>{record.doctor}</strong></span>
                   <span>Xarajat: <strong style={{ color: 'var(--green-light)' }}>{record.cost.toLocaleString('uz-UZ')} so'm</strong></span>
                 </div>
+                {record.status === 'davom etmoqda' && currentUser?.role !== 'fermer' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                    <button
+                      onClick={() => updateVetRecord(record.id, { status: 'yakunlangan' })}
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem', width: '100%', justifyContent: 'center' }}
+                    >
+                      Tadbirni yakunlash
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </section>

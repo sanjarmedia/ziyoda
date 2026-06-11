@@ -13,10 +13,13 @@ import AdminPage from './pages/AdminPage';
 function AppContent() {
   const { currentUser, logout } = useFarm();
 
-  // Protected Route Wrapper
-  const ProtectedRoute = ({ children }) => {
+  // Protected Route Wrapper with role validation
+  const ProtectedRoute = ({ children, allowedRoles }) => {
     if (!currentUser) {
       return <Navigate to="/login" replace />;
+    }
+    if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+      return <Navigate to="/dashboard" replace />;
     }
     return children;
   };
@@ -41,9 +44,30 @@ function AppContent() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="animals" element={<AnimalsPage />} />
           <Route path="animals/:id" element={<AnimalDetailPage />} />
-          <Route path="feed-plans" element={<FeedPlanPage />} />
-          <Route path="vet-records" element={<VetRecordsPage />} />
-          <Route path="admin" element={<AdminPage />} />
+          <Route 
+            path="feed-plans" 
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'fermer']}>
+                <FeedPlanPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="vet-records" 
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'veterinar', 'fermer']}>
+                <VetRecordsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="admin" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminPage />
+              </ProtectedRoute>
+            } 
+          />
         </Route>
 
         {/* Wildcard fallback redirects to dashboard */}

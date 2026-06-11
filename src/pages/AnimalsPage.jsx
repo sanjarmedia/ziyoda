@@ -5,7 +5,7 @@ import { useFarm } from '../context/FarmContext';
 
 export default function AnimalsPage() {
   const navigate = useNavigate();
-  const { animals, addAnimal } = useFarm();
+  const { animals, addAnimal, currentUser } = useFarm();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -82,14 +82,16 @@ export default function AnimalsPage() {
           <h2>Hayvonlar roʻyxati</h2>
           <p>Fermadagi barcha hayvonlarning toʻliq roʻyxati va holati nazorati</p>
         </div>
-        <button 
-          className="btn btn-primary" 
-          onClick={() => setIsAddOpen(true)}
-          style={{ gap: '8px' }}
-        >
-          <Plus size={16} />
-          Yangi qoʻshish
-        </button>
+        {currentUser?.role !== 'veterinar' && (
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setIsAddOpen(true)}
+            style={{ gap: '8px' }}
+          >
+            <Plus size={16} />
+            Yangi qoʻshish
+          </button>
+        )}
       </header>
 
       {/* Filters and Search Bar */}

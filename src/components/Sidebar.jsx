@@ -74,7 +74,7 @@ export default function Sidebar() {
     navigate('/login');
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
@@ -85,7 +85,7 @@ export default function Sidebar() {
     }
 
     try {
-      updateSelfProfile({
+      await updateSelfProfile({
         fullName: fullName.trim(),
         username: username.trim(),
         password: password.trim(),
@@ -146,6 +146,10 @@ export default function Sidebar() {
             const Icon = item.icon;
             // Admin only item check
             if (item.to === '/admin' && currentUser?.role !== 'admin') {
+              return null;
+            }
+            // Veterinar check for feed plans
+            if (item.to === '/feed-plans' && currentUser?.role === 'veterinar') {
               return null;
             }
             return (
