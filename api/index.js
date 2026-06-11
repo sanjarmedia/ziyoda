@@ -7,7 +7,7 @@ import {
   animals as initialAnimals, 
   vetRecords as initialVetRecords, 
   feedStock as initialFeedStock 
-} from './src/data/mockData.js';
+} from '../src/data/mockData.js';
 
 dotenv.config();
 
@@ -456,8 +456,15 @@ app.post('/api/feed-stock/refill', async (req, res) => {
   }
 });
 
-// Start Express server and initialize DB tables
-app.listen(port, async () => {
-  console.log(`Ziyoda backend server running on http://localhost:${port}`);
-  await initDb();
-});
+// Start Express server locally or on render/Vercel
+if (!process.env.VERCEL) {
+  app.listen(port, async () => {
+    console.log(`Ziyoda backend server running on http://localhost:${port}`);
+    await initDb();
+  });
+} else {
+  // Trigger DB table check/seeding immediately on cold start
+  initDb();
+}
+
+export default app;
